@@ -1,4 +1,9 @@
 name = "my-auth-test"
 type = "webpack"
-account_id = "dc56444c4c955a1653106ccf997c1067"
 workers_dev = true
+account_id = "dc56444c4c955a1653106ccf997c1067"
+
+[env.zone]
+workers_dev = false
+zone_id = "8277f61d090cd9092908ea8e81f30ffd"
+route = "https://auth-test.bytesized.xyz/*"
