@@ -1,10 +1,12 @@
-import { authorize, handleRedirect } from './auth0'
+import { authorize, logout, handleRedirect } from './auth0'
+
 import index from './templates/index'
+import logged_out from './templates/logged_out'
 
 addEventListener('fetch', event => event.respondWith(handleRequest(event)))
 
 const config = {
-  originless: true
+  originless: true,
 }
 
 async function handleRequest(event) {
@@ -19,8 +21,22 @@ async function handleRequest(event) {
       })
     }
 
-    let response = config.originless ? new Response(null) : await fetch(event.request)
+    let response = config.originless
+      ? new Response(null)
+      : await fetch(event.request)
+
     const url = new URL(event.request.url)
+    if (url.pathname === '/logout') {
+      const { headers } = logout(event)
+      return headers
+        ? new Response(logged_out(), {
+            headers: Object.assign({}, headers, {
+              'Content-type': 'text/html',
+            }),
+          })
+        : Response.redirect(url.origin)
+    }
+
     if (url.pathname === '/auth') {
       const authorizedResponse = await handleRedirect(event)
       response = new Response(response.body, {

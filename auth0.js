@@ -93,9 +93,9 @@ const verify = async event => {
   const cookieHeader = event.request.headers.get('Cookie')
   if (cookieHeader && cookieHeader.includes(cookieKey)) {
     const cookies = cookie.parse(cookieHeader)
-    const { access_token: accessToken, id_token: idToken } = JSON.parse(
-      cookies[cookieKey],
-    )
+    if (!cookies[cookieKey]) return {}
+    const parsed = JSON.parse(cookies[cookieKey])
+    const { access_token: accessToken, id_token: idToken } = parsed
     const { sub } = JSON.parse(decodeJWT(idToken))
     const resp = await fetch(userInfoUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -116,4 +116,16 @@ export const authorize = async event => {
   } else {
     return [false, { redirectUrl }]
   }
+}
+
+export const logout = event => {
+  const cookieHeader = event.request.headers.get('Cookie')
+  if (cookieHeader && cookieHeader.includes(cookieKey)) {
+    return {
+      headers: {
+        'Set-cookie': `${cookieKey}="";`,
+      },
+    }
+  }
+  return {}
 }

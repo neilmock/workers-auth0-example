@@ -1,4 +1,4 @@
-export default ({ userInfo }) => `
+export default () => `
 <!doctype html>
 <html>
   <head>
@@ -14,21 +14,16 @@ export default ({ userInfo }) => `
         <div class="bg-white shadow sm:rounded-lg" id="content" style="display: none">
           <div class="px-4 py-5 sm:p-6">
             <h3 class="text-xl leading-6 font-medium text-gray-900">
-              Hey, ${userInfo.name}!
+              You're logged out!
             </h3>
-            <div class="mt-3 max-w-xl text-md leading-5 text-gray-500">
+            <div class="mt-2 max-w-xl text-md leading-5 text-gray-500">
               <p>
-                This is an <strong>authorized</strong> Workers application using Auth0.
+                Note that by default, logging back in with Auth0 will happen automatically if your browser stores session information. This is a simulated "logged out" page.
               </p>
             </div>
             <div class="mt-3 text-md leading-5">
-              <a href="https://github.com/signalnerve/workers-auth0-example" class="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline transition ease-in-out duration-150">
-                See the open-source GitHub repository to learn more about this code &rarr;
-              </a>
-            </div>
-            <div class="mt-3 text-md leading-5">
-              <a href="/logout" class="font-medium text-red-600 hover:text-red-500 focus:outline-none focus:underline transition ease-in-out duration-150">
-                Log out &rarr;
+              <a href="/" class="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline transition ease-in-out duration-150">
+                Log in again &rarr;
               </a>
             </div>
           </div>
