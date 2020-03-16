@@ -1,5 +1,26 @@
 import cookie from 'cookie'
 
+/*
+ * Helper to get from an ascii string to a literal byte array.
+ * Necessary to get ascii string prepped for base 64 encoding
+ */
+const asciiToUint8Array = async str => {
+  let chars = []
+  for (let i = 0; i < str.length; ++i) {
+    chars.push(str.charCodeAt(i))
+  }
+  return new Uint8Array(chars)
+}
+
+const str2ab = async str => {
+  var buf = new ArrayBuffer(str.length * 2) // 2 bytes for each char
+  var bufView = new Uint16Array(buf)
+  for (var i = 0, strLen = str.length; i < strLen; i++) {
+    bufView[i] = str.charCodeAt(i)
+  }
+  return buf
+}
+
 const auth0 = {
   domain: AUTH0_DOMAIN,
   clientId: AUTH0_CLIENT_ID,
@@ -57,6 +78,68 @@ const decodeJWT = function(token) {
   }
 }
 
+const generateKey = async () =>
+  crypto.subtle.importKey(
+    'raw',
+    await asciiToUint8Array(AUTH_KEY),
+    'AES-GCM',
+    true,
+    ['encrypt', 'decrypt'],
+  )
+
+const decrypt = async ({ data, iv: newIv }) => {
+  const retrievedEncrypted = atob(data)
+  const iv = new Uint8Array(atob(newIv).split(','))
+
+  // console.log(data)
+  // console.log(retrievedEncrypted)
+
+  let decrypted = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv, //The initialization vector you used to encrypt
+    },
+    await generateKey(), //from generateKey or importKey above
+    await str2ab(retrievedEncrypted), //ArrayBuffer of the data
+  )
+
+  const encryptedArray = Array.from(new Uint8Array(decrypted))
+  const encryptedString = encryptedArray
+    .map(byte => String.fromCharCode(byte))
+    .join('')
+
+  return { data: btoa(encryptedString) }
+}
+
+const encrypt = async data => {
+  const myData = btoa(JSON.stringify(data))
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+
+  const encrypted = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+
+      //Don't re-use initialization vectors!
+      //Always generate a new iv every time your encrypt!
+      //Recommended to use 12 bytes length
+      iv,
+    },
+    await generateKey(), //from generateKey or importKey above
+    await str2ab(myData), //ArrayBuffer of data you want to encrypt
+  )
+
+  const encryptedArray = Array.from(new Uint8Array(encrypted))
+  const encryptedString = encryptedArray
+    .map(byte => String.fromCharCode(byte))
+    .join('')
+
+  // console.log('btoa')
+  // console.log(btoa(encryptedString))
+  // console.log('btoa')
+
+  return { data: btoa(encryptedString), iv: btoa(iv) }
+}
+
 const persistAuth = async exchange => {
   const body = await exchange.json()
 
@@ -68,8 +151,9 @@ const persistAuth = async exchange => {
   date.setDate(date.getDate() + 1)
 
   const decoded = JSON.parse(decodeJWT(body.id_token))
-
-  await AUTH_STORE.put(decoded.sub, JSON.stringify(body))
+  const { data, iv } = await encrypt(body)
+  await AUTH_STORE.put('iv:' + decoded.sub, iv)
+  await AUTH_STORE.put(decoded.sub, data)
 
   const headers = {
     Location: '/',
@@ -100,8 +184,12 @@ const verify = async event => {
     if (!cookies[cookieKey]) return {}
     const sub = cookies[cookieKey]
 
-    const kvStored = JSON.parse(await AUTH_STORE.get(sub))
-    const { access_token: accessToken, id_token: idToken } = kvStored
+    const iv = await AUTH_STORE.get(`iv:` + sub)
+    const data = await AUTH_STORE.get(sub)
+    const { data: kvStored } = await decrypt({ data, iv })
+    const { access_token: accessToken, id_token: idToken } = JSON.parse(
+      kvStored,
+    )
     const decoded = JSON.parse(decodeJWT(idToken))
     const resp = await fetch(userInfoUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
