@@ -18,7 +18,7 @@ const exchangeCode = async code => {
     redirect_uri: auth0.callbackUrl,
   })
 
-  return setCookie(
+  return persistAuth(
     await fetch(AUTH0_DOMAIN + '/oauth/token', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -27,7 +27,37 @@ const exchangeCode = async code => {
   )
 }
 
-const setCookie = async exchange => {
+// https://github.com/pose/webcrypto-jwt/blob/master/index.js
+const decodeJWT = function(token) {
+  var output = token
+    .split('.')[1]
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+  switch (output.length % 4) {
+    case 0:
+      break
+    case 2:
+      output += '=='
+      break
+    case 3:
+      output += '='
+      break
+    default:
+      throw 'Illegal base64url string!'
+  }
+
+  // TODO Use shim or document incomplete browsers
+  var result = atob(output)
+
+  try {
+    return decodeURIComponent(escape(result))
+  } catch (err) {
+    console.log(err)
+    return result
+  }
+}
+
+const persistAuth = async exchange => {
   const body = await exchange.json()
 
   if (body.error) {
@@ -37,11 +67,15 @@ const setCookie = async exchange => {
   const date = new Date()
   date.setDate(date.getDate() + 1)
 
-  const hashedBody = JSON.stringify(body) // TODO
+  const decoded = JSON.parse(decodeJWT(body.id_token))
+
+  await AUTH_STORE.put(decoded.sub, JSON.stringify(body))
 
   const headers = {
     Location: '/',
-    'Set-cookie': `${cookieKey}=${hashedBody}; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
+    'Set-cookie': `${cookieKey}=${
+      decoded.sub
+    }; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
   }
 
   return { headers, status: 302 }
@@ -60,51 +94,23 @@ export const handleRedirect = async event => {
 }
 
 const verify = async event => {
-  // https://github.com/pose/webcrypto-jwt/blob/master/index.js
-  const decodeJWT = function(token) {
-    var output = token
-      .split('.')[1]
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
-    switch (output.length % 4) {
-      case 0:
-        break
-      case 2:
-        output += '=='
-        break
-      case 3:
-        output += '='
-        break
-      default:
-        throw 'Illegal base64url string!'
-    }
-
-    // TODO Use shim or document incomplete browsers
-    var result = atob(output)
-
-    try {
-      return decodeURIComponent(escape(result))
-    } catch (err) {
-      console.log(err)
-      return result
-    }
-  }
-
   const cookieHeader = event.request.headers.get('Cookie')
   if (cookieHeader && cookieHeader.includes(cookieKey)) {
     const cookies = cookie.parse(cookieHeader)
     if (!cookies[cookieKey]) return {}
-    const parsed = JSON.parse(cookies[cookieKey])
-    const { access_token: accessToken, id_token: idToken } = parsed
-    const { sub } = JSON.parse(decodeJWT(idToken))
+    const sub = cookies[cookieKey]
+
+    const kvStored = JSON.parse(await AUTH_STORE.get(sub))
+    const { access_token: accessToken, id_token: idToken } = kvStored
+    const decoded = JSON.parse(decodeJWT(idToken))
     const resp = await fetch(userInfoUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     const json = await resp.json()
-    if (sub !== json.sub) {
+    if (decoded.sub !== json.sub) {
       throw new Error('Access token is invalid')
     }
-    return { accessToken, idToken, sub, userInfo: json }
+    return { accessToken, idToken, userInfo: json }
   }
   return {}
 }

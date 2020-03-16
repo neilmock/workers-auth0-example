@@ -2,3 +2,7 @@ name = "my-auth-test"
 type = "webpack"
 account_id = "dc56444c4c955a1653106ccf997c1067"
 workers_dev = true
+
+kv-namespaces = [
+  { binding = "AUTH_STORE", id = "dc9ec91bfd6b430ba9c4b403f885045e" }
+]
