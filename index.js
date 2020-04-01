@@ -5,7 +5,11 @@ import { hydrateState } from './edge_state'
 
 addEventListener('fetch', event => event.respondWith(handleRequest(event)))
 
+// see the readme for more info on what these config options do!
 const config = {
+  // opt into automatic authorization state hydration
+  hydrateState: true,
+  // return responses at the edge
   originless: true,
 }
 
@@ -55,14 +59,11 @@ async function handleRequest(event) {
     // hydrate the static site with authorization info from auth0
     // this uses alpine.js and the htmlrewriter engine built into
     // workers. for more info, check out the README
-    return new HTMLRewriter()
-      .on('script#edge_state', hydrateState(authorization.userInfo))
-      .transform(response)
-
-    // to skip any sort of edge-state hydration (see the README) and just
-    // return your site, replace the above return call with the line below
-    //
-    // return response
+    return config.hydrateState
+      ? new HTMLRewriter()
+          .on('script#edge_state', hydrateState(authorization.userInfo))
+          .transform(response)
+      : response
   } catch (err) {
     return new Response(err.toString())
   }
