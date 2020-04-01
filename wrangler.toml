@@ -6,3 +6,7 @@ workers_dev = true
 kv-namespaces = [
   { binding = "AUTH_STORE", id = "dc9ec91bfd6b430ba9c4b403f885045e" }
 ]
+
+[site]
+bucket = './public'
+entry-point = "."
