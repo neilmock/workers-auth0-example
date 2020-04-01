@@ -1,6 +1,6 @@
 <div align="center">
 <h1>🔐🙅‍♀️ workers-auth0-example</h1>
-<p>authorization/authentication at the edge, using <a href="https://workers.dev">cloudflare workers</a> and <a href="https://auth0.com">auth0</**a**></p>
+<p>authorization/authentication at the edge, using <a href="https://workers.dev">cloudflare workers</a> and <a href="https://auth0.com">auth0</a></p>
 </div>
 
 ## tutorial
@@ -26,7 +26,7 @@ this project makes heavy use of [`wrangler`][wrangler], the workers command-line
 
 ### `wrangler.toml`
 
-the `wrangler.toml` config file in this repository needs to be configured for deploying your own version of this application. using `wrangler generate` will automatically add a `name` field - you'll also need to configure an account id, and, depending on if you're deploying your application to a _zone_ (see "deploying" later in this9 readme), a zone id and route.
+the `wrangler.toml` config file in this repository needs to be configured for deploying your own version of this application. using `wrangler generate` will automatically add a `name` field - you'll also need to configure an account id, and, depending on if you're deploying your application to a _zone_ (see "deploying" later in this readme), a zone id and route.
 
 for more information on configuring this correctly, i strongly recommend you check out the [quick start][quick start] in the workers docs!
 
@@ -37,7 +37,7 @@ _this section is still in progress!_
 by default, this project uses the binding `AUTH_STORE` to refer to a kv namespace where credentials are read/written from the workers script. to create your own kv namespace, use `wrangler`, and copy the resulting id into the `kv-namespaces` portion of `wrangler.toml`:
 
 ```
-wrangler kv:namespace AUTH_STORE
+wrangler kv:namespace create AUTH_STORE
 ```
 
 ### secrets
@@ -89,7 +89,7 @@ note that if you'd like to disable this feature, you can toggle the config optio
 
 ## development
 
-local dev can be very closely simulated using [wrangler dev][wrangler dev]. note that `wrangler`/workers does not support specific secrets for `wrangler dev`. you should set up a different environment such as `development`, and use it in your local testing, in order to allow auth0 to successfully redirect you to `wrangler dev`'s `localhost:8787` set up (or use something like [`ngrok`][ngrok] for non-localhost usage). sane default environments for this repo are in development, see this issue (https://github.com/signalnerve/workers-auth0-example/issues/4) for more details.
+local dev can be very closely simulated using [wrangler dev][wrangler dev]. note that `wrangler`/workers does not support specific secrets for `wrangler dev`. you should set up a different environment such as `development`, and use it in your local testing, in order to allow auth0 to successfully redirect you to `wrangler dev`'s `localhost:8787` set up (or use something like [`ngrok`][ngrok] for non-localhost usage). sane default environments for this repo are in development, see [this issue](https://github.com/signalnerve/workers-auth0-example/issues/4) for more details.
 
 ## deploying
 
