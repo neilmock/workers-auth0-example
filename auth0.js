@@ -88,7 +88,7 @@ export const handleRedirect = async event => {
   const url = new URL(event.request.url)
   const code = url.searchParams.get('code')
   if (code) {
-    return exchangeCode(code)
+    return await exchangeCode(code)
   }
   return {}
 }
