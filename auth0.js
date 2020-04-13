@@ -69,13 +69,16 @@ const persistAuth = async exchange => {
 
   const decoded = JSON.parse(decodeJWT(body.id_token))
 
-  await AUTH_STORE.put(decoded.sub, JSON.stringify(body))
+  const text = new TextEncoder().encode(`${SALT}-${decoded.sub}`)
+  const digest = await crypto.subtle.digest({ name: 'SHA-256' }, text)
+  const digestArray = new Uint8Array(digest)
+  const id = btoa(String.fromCharCode.apply(null, digestArray))
+
+  await AUTH_STORE.put(id, JSON.stringify(body))
 
   const headers = {
     Location: '/',
-    'Set-cookie': `${cookieKey}=${
-      decoded.sub
-    }; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
+    'Set-cookie': `${cookieKey}=${id}; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
   }
 
   return { headers, status: 302 }
