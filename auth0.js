@@ -46,7 +46,6 @@ const decodeJWT = function(token) {
       throw 'Illegal base64url string!'
   }
 
-  // TODO Use shim or document incomplete browsers
   const result = atob(output)
 
   try {
@@ -103,7 +102,18 @@ const verify = async event => {
     if (!cookies[cookieKey]) return {}
     const sub = cookies[cookieKey]
 
-    const kvStored = JSON.parse(await AUTH_STORE.get(sub))
+    const kvData = await AUTH_STORE.get(sub)
+    if (!kvData) {
+      throw new Error('Unable to find authorization data')
+    }
+
+    let kvStored
+    try {
+      kvStored = JSON.parse(kvData)
+    } catch (err) {
+      throw new Error('Unable to parse auth information from Workers KV')
+    }
+
     const { access_token: accessToken, id_token: idToken } = kvStored
     const decoded = JSON.parse(decodeJWT(idToken))
     const resp = await fetch(userInfoUrl, {
