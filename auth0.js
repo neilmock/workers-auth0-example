@@ -47,7 +47,7 @@ const decodeJWT = function(token) {
   }
 
   // TODO Use shim or document incomplete browsers
-  var result = atob(output)
+  const result = atob(output)
 
   try {
     return decodeURIComponent(escape(result))
@@ -78,7 +78,7 @@ const persistAuth = async exchange => {
 
   const headers = {
     Location: '/',
-    'Set-cookie': `${cookieKey}=${id}; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
+    'Set-cookie': `${cookieKey}=${id}; Secure; HttpOnly; SameSite=Lax; Expires=${date.toUTCString()}`,
   }
 
   return { headers, status: 302 }
@@ -91,7 +91,7 @@ export const handleRedirect = async event => {
   const url = new URL(event.request.url)
   const code = url.searchParams.get('code')
   if (code) {
-    return await exchangeCode(code)
+    return exchangeCode(code)
   }
   return {}
 }
@@ -132,7 +132,7 @@ export const logout = event => {
   if (cookieHeader && cookieHeader.includes(cookieKey)) {
     return {
       headers: {
-        'Set-cookie': `${cookieKey}="";`,
+        'Set-cookie': `${cookieKey}=""; HttpOnly; Secure; SameSite=Lax;`,
       },
     }
   }
