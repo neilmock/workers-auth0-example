@@ -9,6 +9,13 @@ const auth0 = {
 
 const cookieKey = 'AUTH0-AUTH'
 
+const generateStateParam = async () => {
+  const resp = await fetch('https://csprng.xyz/v1/api')
+  const { Data: state } = await resp.json()
+  await AUTH_STORE.put(`state-${state}`, true, { expirationTtl: 60 })
+  return state
+}
+
 const exchangeCode = async code => {
   const body = JSON.stringify({
     grant_type: 'authorization_code',
@@ -83,16 +90,32 @@ const persistAuth = async exchange => {
   return { headers, status: 302 }
 }
 
-const redirectUrl = `${auth0.domain}/authorize?response_type=code&client_id=${auth0.clientId}&redirect_uri=${auth0.callbackUrl}&scope=openid%20profile%20email`
-const userInfoUrl = `${auth0.domain}/userInfo`
+const redirectUrl = state =>
+  `${auth0.domain}/authorize?response_type=code&client_id=${
+    auth0.clientId
+  }&redirect_uri=${
+    auth0.callbackUrl
+  }&scope=openid%20profile%20email&state=${encodeURIComponent(state)}`
 
 export const handleRedirect = async event => {
   const url = new URL(event.request.url)
+
+  const state = url.searchParams.get('state')
+  if (!state) {
+    return null
+  }
+
+  const storedState = await AUTH_STORE.get(`state-${state}`)
+  if (!storedState) {
+    return null
+  }
+
   const code = url.searchParams.get('code')
   if (code) {
     return exchangeCode(code)
   }
-  return {}
+
+  return null
 }
 
 const verify = async event => {
@@ -115,15 +138,8 @@ const verify = async event => {
     }
 
     const { access_token: accessToken, id_token: idToken } = kvStored
-    const decoded = JSON.parse(decodeJWT(idToken))
-    const resp = await fetch(userInfoUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    const json = await resp.json()
-    if (decoded.sub !== json.sub) {
-      throw new Error('Access token is invalid')
-    }
-    return { accessToken, idToken, userInfo: json }
+    const userInfo = JSON.parse(decodeJWT(idToken))
+    return { accessToken, idToken, userInfo }
   }
   return {}
 }
@@ -133,7 +149,8 @@ export const authorize = async event => {
   if (authorization.accessToken) {
     return [true, { authorization }]
   } else {
-    return [false, { redirectUrl }]
+    const state = await generateStateParam()
+    return [false, { redirectUrl: redirectUrl(state) }]
   }
 }
 
