@@ -63,6 +63,46 @@ const decodeJWT = function(token) {
   }
 }
 
+const validateToken = token => {
+  try {
+    const dateInSecs = d => Math.ceil(Number(d) / 1000)
+    const date = new Date()
+
+    let iss = token.iss
+
+    // ISS can include a trailing slash but should otherwise be identical to
+    // the AUTH0_DOMAIN, so we should remove the trailing slash if it exists
+    iss = iss.endsWith('/') ? iss.slice(0, -1) : iss
+
+    if (iss !== AUTH0_DOMAIN) {
+      throw new Error(
+        `Token iss value (${iss}) doesn't match AUTH0_DOMAIN (${AUTH0_DOMAIN})`,
+      )
+    }
+
+    if (token.aud !== AUTH0_CLIENT_ID) {
+      throw new Error(
+        `Token aud value (${token.aud}) doesn't match AUTH0_CLIENT_ID (${AUTH0_CLIENT_ID})`,
+      )
+    }
+
+    if (token.exp < dateInSecs(date)) {
+      throw new Error(`Token exp value is before current time`)
+    }
+
+    // Token should have been issued within the last day
+    date.setDate(date.getDate() - 1)
+    if (token.iat < dateInSecs(date)) {
+      throw new Error(`Token was issued before one day ago and is now invalid`)
+    }
+
+    return true
+  } catch (err) {
+    console.log(err.message)
+    return false
+  }
+}
+
 const persistAuth = async exchange => {
   const body = await exchange.json()
 
@@ -74,6 +114,10 @@ const persistAuth = async exchange => {
   date.setDate(date.getDate() + 1)
 
   const decoded = JSON.parse(decodeJWT(body.id_token))
+  const validToken = validateToken(decoded)
+  if (!validToken) {
+    return { status: 401 }
+  }
 
   const text = new TextEncoder().encode(`${SALT}-${decoded.sub}`)
   const digest = await crypto.subtle.digest({ name: 'SHA-256' }, text)
